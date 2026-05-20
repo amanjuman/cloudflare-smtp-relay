@@ -1,0 +1,34 @@
+services:
+  relay:
+    build:
+      context: .
+    container_name: cf-smtp-relay
+    env_file: .env
+    ports:
+      - "2525:2525"
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - certs:/certs:ro
+    depends_on:
+      certbot:
+        condition: service_healthy
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/dns-cloudflare:latest
+    container_name: cf-certbot
+    env_file: .env
+    volumes:
+      - ./scripts:/scripts:ro
+      - certs:/certs
+    entrypoint: ["/bin/sh", "/scripts/certbot-run.sh"]
+    healthcheck:
+      test: ["CMD", "test", "-f", "/certs/renewed"]
+      interval: 10s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  certs:
